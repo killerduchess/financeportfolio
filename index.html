@@ -181,6 +181,16 @@ nav.scrolled {
 .status-next { background: rgba(0,200,170,0.12); color: #009982; border: 1px solid rgba(0,200,170,0.25); }
 .status-soon { background: rgba(0,100,200,0.08); color: #1a5faa; border: 1px solid rgba(0,100,200,0.15); }
 .status-later { background: rgba(90,112,128,0.08); color: var(--muted); border: 1px solid var(--border); }
+.status-live { background: rgba(0,200,170,0.12); color: #007a66; border: 1px solid rgba(0,200,170,0.35); font-weight: 600; }
+.project-view-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  padding: 7px 14px; background: var(--teal); color: var(--dark);
+  border-radius: 3px; text-decoration: none; font-weight: 600;
+  letter-spacing: 0.05em; transition: all 0.2s;
+  border: none; cursor: pointer;
+}
+.project-view-btn:hover { background: var(--teal-light); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,200,170,0.28); }
 
 /* ── CMA JOURNEY (light gradient) ── */
 #cma { padding: 100px 60px; background: linear-gradient(135deg, #f0f7ff 0%, #edfaf7 60%, #f8fbff 100%); }
@@ -559,20 +569,23 @@ footer { background: linear-gradient(135deg, #d4e8e0 0%, #e0ddd4 100%); padding:
 <!-- PROJECTS -->
 <section id="projects">
   <div class="section-eyebrow reveal">03 — Projects</div>
-  <h2 class="section-title reveal">Work in<br><em>progress</em></h2>
+  <h2 class="section-title reveal">Building in<br><em>public</em></h2>
   <p class="section-lead reveal">Real financial models built from scratch using anonymised data. Each demonstrates a skill set relevant to finance analyst and FP&A roles.</p>
 
   <div class="projects-grid">
-    <div class="project-card reveal">
+    <div class="project-card reveal" style="border-color: rgba(0,200,170,0.35); box-shadow: 0 4px 20px rgba(0,200,170,0.08);">
       <div class="project-card-top">
-        <div class="project-num">PROJECT 01</div>
+        <div class="project-num" style="display:flex;align-items:center;justify-content:space-between;">
+          PROJECT 01
+          <span class="project-status status-live" style="margin-bottom:0;">✦ Live</span>
+        </div>
         <div class="project-icon-wrap">📊</div>
         <div class="project-title">Cash Flow Tracker & Weekly Payment Planner</div>
-        <div class="project-desc">A working Excel dashboard that tracks weekly cash inflows and outflows, flags overdue payments, shows available cash balance, and helps prioritise payments — built from direct work experience.</div>
+        <div class="project-desc">A 4-tab Excel model tracking weekly cash inflows, outflows, 31 AP line items across 70+ vendors, closing cash balance, and payment prioritisation — 198 live formulas, built from real $50K+/month operations.</div>
       </div>
-      <div class="project-card-bottom">
-        <span class="project-skills">Excel · Cash Flow · AP/AR</span>
-        <span class="project-status status-next">Build next</span>
+      <div class="project-card-bottom" style="background: linear-gradient(90deg, rgba(0,200,170,0.04), transparent);">
+        <span class="project-skills">Excel · Cash Flow · AP/AR · 4 Sheets</span>
+        <a href="project1.html" target="_blank" class="project-view-btn">View Project →</a>
       </div>
     </div>
     <div class="project-card reveal reveal-delay-1">
@@ -771,9 +784,9 @@ footer { background: linear-gradient(135deg, #d4e8e0 0%, #e0ddd4 100%); padding:
       <div class="contact-intro">Open to finance roles in India and the USA.</div>
       <p class="contact-text">Whether you're a recruiter, an MBA admissions committee, or someone curious about my work — I'd love to connect. I'm actively looking for opportunities that align with my finance career goals.</p>
       <div class="contact-links">
-        <a href="mailto:30tanya02@gmail.com" class="contact-link">
+        <a href="/cdn-cgi/l/email-protection#3c0f0c485d52455d0c0e7c5b515d5550125f5351" class="contact-link">
           <span class="contact-link-icon">✉️</span>
-          <div><div class="contact-link-label">EMAIL</div><div class="contact-link-text">30tanya02@gmail.com</div><div class="contact-link-sub">Best way to reach me</div></div>
+          <div><div class="contact-link-label">EMAIL</div><div class="contact-link-text"><span class="__cf_email__" data-cfemail="f7c4c78396998e96c7c5b7909a969e9bd994989a">[email&#160;protected]</span></div><div class="contact-link-sub">Best way to reach me</div></div>
         </a>
         <a href="https://www.linkedin.com/in/tanyaalearns/" target="_blank" class="contact-link">
           <span class="contact-link-icon">💼</span>
@@ -815,7 +828,7 @@ footer { background: linear-gradient(135deg, #d4e8e0 0%, #e0ddd4 100%); padding:
   <div class="footer-copy">© 2026 · Lucknow, India</div>
 </footer>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // Hamburger menu
 const hamburger = document.getElementById('hamburger');
 const mobileMenu = document.getElementById('mobileMenu');
@@ -866,10 +879,12 @@ function downloadResume() {
 // Scroll reveal
 const reveals = document.querySelectorAll('.reveal');
 const observer = new IntersectionObserver((entries) => {
-  entries.forEach(e => {
-    if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
   });
-}, { threshold: 0.1 });
+}, { threshold: 0.08 });
 reveals.forEach(el => observer.observe(el));
 </script>
 </body>
