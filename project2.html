@@ -272,15 +272,17 @@ function styleTable(table, sheetName) {
     // ══ VARIANCE ANALYSIS: colour last column by sign ══════════════════════
     if (sheetName==="Variance_Analysis" && cells.length>=4) {
       const lastCell = cells[cells.length-1];
-      const raw = (lastCell.innerText||"").replace(/[$,()\s]/g,"");
-      const val = parseFloat(raw);
-      if (!isNaN(val) && raw!=="") {
+      const txt = (lastCell.innerText||"").trim();
+      // ($1,234) = negative, $1,234 = positive, - = zero
+      const isNeg = txt.includes("(");
+      const raw = txt.replace(/[$,()\s,]/g,"").replace(/-/g,"");
+      const val = raw==="" || raw==="-" ? 0 : (isNeg ? -parseFloat(raw) : parseFloat(raw));
+      if (!isNaN(val) && txt!=="" && txt!=="-") {
         lastCell.style.background = REV_LINES.has(first)
           ? (val>=0 ? POS : NEG)
           : (val<=0 ? POS : NEG);
         lastCell.style.fontWeight = "700";
       }
-      // Also colour column 14 (FY Actual) and 15 (FY Budget) labels
       if (cells[0]) { cells[0].style.fontWeight = "600"; }
     }
 
@@ -294,18 +296,24 @@ function styleTable(table, sheetName) {
       if (isMonthRow) {
         cells[0].style.color="#005F5F"; cells[0].style.fontWeight="700"; cells[0].style.textAlign="center";
         cells[0].style.background=TEAL_XPALE;
-        // MoM delta $ (col 3, index 2) and MoM delta % (col 4, index 3)
+        // Helper: parse ($1,234) and (12.3%) correctly
+        function parseVal(cell) {
+          const txt = (cell.innerText||"").trim();
+          const isNeg = txt.includes("(");
+          const raw = txt.replace(/[$,%,()\s]/g,"").replace(/[+]/g,"");
+          const n = parseFloat(raw);
+          return isNaN(n) ? NaN : (isNeg ? -n : n);
+        }
+        // MoM delta $ (index 2) and MoM delta % (index 3)
         [2,3].forEach(ci => {
           if (!cells[ci]) return;
-          const raw = (cells[ci].innerText||"").replace(/[$,%(),\s]/g,"");
-          const v = parseFloat(raw);
+          const v = parseVal(cells[ci]);
           if (!isNaN(v)) cells[ci].style.background = v>=0 ? POS : NEG;
         });
-        // vs Budget $ (col 6, index 5) and vs Budget % (col 7, index 6)
+        // vs Budget $ (index 5) and vs Budget % (index 6)
         [5,6].forEach(ci => {
           if (!cells[ci]) return;
-          const raw = (cells[ci].innerText||"").replace(/[$,%(),+\s]/g,"");
-          const v = parseFloat(raw);
+          const v = parseVal(cells[ci]);
           if (!isNaN(v)) cells[ci].style.background = v>=0 ? POS : NEG;
         });
       }
