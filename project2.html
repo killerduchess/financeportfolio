@@ -186,21 +186,47 @@ function downloadFile() {
 
 function styleTable(table, sheetName) {
   const rows = table.querySelectorAll("tr");
-  const TEAL_DARK="#005F5F", TEAL_MID="#008B8B", TEAL_XPALE="#EBF9F8", ROW_ALT="#f9fbfd";
-  const POS="#D6F5D6", NEG="#FFCDD2", YEL="#FFFDE7";
+  const TEAL_DARK="#005F5F", TEAL_MID="#008B8B", TEAL_LT="#CCF0EE", TEAL_XPALE="#EBF9F8";
+  const ROW_ALT="#f9fbfd", POS="#D6F5D6", NEG="#FFCDD2";
 
-  const SECTION_HDRS = new Set(["REVENUE","COST OF REVENUE (COGS)","OPERATING EXPENSES",
+  // Exact trimmed first-cell values from each sheet
+  const SECTION_HDRS = new Set([
+    // PL_Monthly & Variance
+    "REVENUE","COST OF REVENUE (COGS)","OPERATING EXPENSES","COGS",
+    // Assumptions
     "COMPANY OVERVIEW","REVENUE ASSUMPTIONS","COGS ASSUMPTIONS",
     "OPERATING EXPENSE ASSUMPTIONS","BUDGET METHODOLOGY",
-    "NYC TAX NEGOTIATION — KEY WIN","COLOR & FORMULA KEY"]);
-  const TOTALS = new Set(["  TOTAL REVENUE","  TOTAL COGS","  TOTAL OPERATING EXPENSES",
-    "  GROSS PROFIT","  EBITDA","  EBIT (Operating Income)","  PRE-TAX INCOME","  NET INCOME",
-    "TOTAL REVENUE","TOTAL COGS","TOTAL OPEX","GROSS PROFIT","EBITDA","EBIT","Pre-Tax Income","NET INCOME"]);
-  const MARGINS = new Set(["  Gross Margin %","  EBITDA Margin %","  Net Margin %"]);
+    "NYC TAX NEGOTIATION — KEY WIN","COLOR & FORMULA KEY",
+    // Variance legend + MoM
+    "VARIANCE LEGEND","KEY PERFORMANCE METRICS — FY 2025 FULL YEAR",
+  ]);
+
+  // Big teal-dark totals (net income / EBITDA level)
+  const BIG_TOTALS = new Set([
+    "NET INCOME","EBITDA","GROSS PROFIT"
+  ]);
+
+  // Mid teal totals
+  const MID_TOTALS = new Set([
+    "TOTAL REVENUE","TOTAL COGS","TOTAL OPERATING EXPENSES","TOTAL OPEX",
+    "EBIT (Operating Income)","EBIT","PRE-TAX INCOME","Pre-Tax Income"
+  ]);
+
+  // Margin % rows
+  const MARGINS = new Set([
+    "Gross Margin %","EBITDA Margin %","Net Margin %"
+  ]);
+
+  // Revenue / profit lines for variance sign logic
+  const REV_LINES = new Set([
+    "Patient Revenue","Insurance Reimbursements","Insurance Reimb.","Other Income",
+    "TOTAL REVENUE","GROSS PROFIT","EBITDA","EBIT (Operating Income)","EBIT",
+    "PRE-TAX INCOME","Pre-Tax Income","NET INCOME"
+  ]);
 
   function rowStyle(tr, bg, col, wt) {
     tr.querySelectorAll("td,th").forEach(c => {
-      c.style.background = bg; c.style.color = col||"#000"; c.style.fontWeight = wt||"normal";
+      c.style.background=bg; c.style.color=col||"#000"; c.style.fontWeight=wt||"normal";
     });
   }
 
@@ -209,81 +235,105 @@ function styleTable(table, sheetName) {
     if (!cells.length) return;
     const first = (cells[0].innerText||"").trim();
     const all   = Array.from(cells).map(c=>(c.innerText||"").trim()).join("|");
-    if (all.replace(/\|/g,"").trim() === "") return;
+    if (all.replace(/\|/g,"").trim()==="") return;
 
-    if (rIdx === 0) { cells.forEach(c => { c.style.cssText=`background:${TEAL_DARK};color:#fff;font-weight:700;font-size:13px;text-align:center;`; }); return; }
-    if (rIdx === 1) { cells.forEach(c => { c.style.background=TEAL_XPALE; c.style.color="#555"; c.style.fontStyle="italic"; c.style.fontSize="10px"; }); return; }
+    // ── Title row ──────────────────────────────────────────────────────────
+    if (rIdx===0) {
+      cells.forEach(c=>{c.style.cssText=`background:${TEAL_DARK};color:#fff;font-weight:700;font-size:13px;text-align:center;`;});
+      return;
+    }
+    // ── Subtitle row ───────────────────────────────────────────────────────
+    if (rIdx===1) {
+      cells.forEach(c=>{c.style.background=TEAL_XPALE;c.style.color="#555";c.style.fontStyle="italic";c.style.fontSize="10px";});
+      return;
+    }
 
+    // ── Section headers ────────────────────────────────────────────────────
     if (SECTION_HDRS.has(first)) { rowStyle(tr, TEAL_MID, "#fff", "700"); return; }
 
-    if (TOTALS.has(first)) {
-      const isBig = first.includes("NET INCOME") || first.includes("EBITDA") || first.includes("GROSS PROFIT");
-      rowStyle(tr, isBig ? TEAL_DARK : TEAL_MID, "#fff", "700");
-      return;
-    }
+    // ── Big totals (Net Income / EBITDA / Gross Profit) ─────────────────────
+    if (BIG_TOTALS.has(first)) { rowStyle(tr, TEAL_DARK, "#fff", "700"); return; }
 
+    // ── Mid totals ─────────────────────────────────────────────────────────
+    if (MID_TOTALS.has(first)) { rowStyle(tr, TEAL_MID, "#fff", "700"); return; }
+
+    // ── Margin % rows ──────────────────────────────────────────────────────
     if (MARGINS.has(first)) {
-      cells.forEach(c => { c.style.background=TEAL_XPALE; c.style.color="#005F5F"; c.style.fontWeight="600"; });
+      cells.forEach(c=>{c.style.background=TEAL_XPALE;c.style.color="#005F5F";c.style.fontWeight="600";});
       return;
     }
 
-    // Column header row (row index 3 = 4th row = month headers)
-    if (rIdx === 3) {
-      cells.forEach(c => { c.style.background=TEAL_DARK; c.style.color="#fff"; c.style.fontWeight="700"; c.style.fontSize="11px"; c.style.textAlign="center"; });
+    // ── Column header row (rIdx 3 = 4th rendered row after title/sub/spacer) ─
+    if (rIdx===3 && (first===""||first==="Line Item"||first==="Month")) {
+      cells.forEach(c=>{c.style.background=TEAL_DARK;c.style.color="#fff";c.style.fontWeight="700";c.style.fontSize="11px";c.style.textAlign="center";});
       return;
     }
 
-    // Variance Analysis: colour variance column (last col) by sign
-    if (sheetName === "Variance_Analysis") {
-      const lastCell = cells[cells.length - 1];
-      const val = parseFloat((lastCell.innerText||"").replace(/[$,()]/g,""));
-      if (!isNaN(val) && cells.length > 3) {
-        const isRevOrProfit = ["Patient Revenue","Insurance","Other Income","TOTAL REVENUE",
-          "GROSS PROFIT","EBITDA","EBIT","Pre-Tax Income","NET INCOME"].some(k => first.includes(k));
-        if (isRevOrProfit) lastCell.style.background = val >= 0 ? POS : NEG;
-        else if (!first.includes("REVENUE") && !first.includes("PROFIT") && !first.includes("INCOME") && !first.includes("EBITDA") && !first.includes("EBIT"))
-          lastCell.style.background = val <= 0 ? POS : NEG;
+    // ══ VARIANCE ANALYSIS: colour last column by sign ══════════════════════
+    if (sheetName==="Variance_Analysis" && cells.length>=4) {
+      const lastCell = cells[cells.length-1];
+      const raw = (lastCell.innerText||"").replace(/[$,()\s]/g,"");
+      const val = parseFloat(raw);
+      if (!isNaN(val) && raw!=="") {
+        lastCell.style.background = REV_LINES.has(first)
+          ? (val>=0 ? POS : NEG)
+          : (val<=0 ? POS : NEG);
+        lastCell.style.fontWeight = "700";
+      }
+      // Also colour column 14 (FY Actual) and 15 (FY Budget) labels
+      if (cells[0]) { cells[0].style.fontWeight = "600"; }
+    }
+
+    // ══ MOM COMMENTARY: wrap + colour delta cells ══════════════════════════
+    if (sheetName==="MoM_Commentary") {
+      const isMonthRow = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/.test(first);
+      const isFYRow    = first==="FY 2025";
+
+      if (isFYRow) { rowStyle(tr, TEAL_DARK, "#fff", "700"); return; }
+
+      if (isMonthRow) {
+        cells[0].style.color="#005F5F"; cells[0].style.fontWeight="700"; cells[0].style.textAlign="center";
+        cells[0].style.background=TEAL_XPALE;
+        // MoM delta $ (col 3, index 2) and MoM delta % (col 4, index 3)
+        [2,3].forEach(ci => {
+          if (!cells[ci]) return;
+          const raw = (cells[ci].innerText||"").replace(/[$,%(),\s]/g,"");
+          const v = parseFloat(raw);
+          if (!isNaN(v)) cells[ci].style.background = v>=0 ? POS : NEG;
+        });
+        // vs Budget $ (col 6, index 5) and vs Budget % (col 7, index 6)
+        [5,6].forEach(ci => {
+          if (!cells[ci]) return;
+          const raw = (cells[ci].innerText||"").replace(/[$,%(),+\s]/g,"");
+          const v = parseFloat(raw);
+          if (!isNaN(v)) cells[ci].style.background = v>=0 ? POS : NEG;
+        });
+      }
+
+      // Commentary column — always wrap
+      if (cells[7]) {
+        cells[7].style.whiteSpace="normal";
+        cells[7].style.wordBreak="break-word";
+        cells[7].style.minWidth="300px";
+        cells[7].style.maxWidth="520px";
+        cells[7].style.lineHeight="1.65";
+        cells[7].style.verticalAlign="top";
+        cells[7].style.padding="8px 10px";
       }
     }
 
-    // MoM Commentary: wrap commentary col
-    if (sheetName === "MoM_Commentary") {
-      if (cells.length >= 8) {
-        const com = cells[7];
-        com.style.whiteSpace = "normal";
-        com.style.wordBreak  = "break-word";
-        com.style.minWidth   = "320px";
-        com.style.maxWidth   = "520px";
-        com.style.lineHeight = "1.6";
-        com.style.verticalAlign = "top";
-        com.style.padding = "8px 10px";
-      }
-      // Month label
-      const mv = (cells[0].innerText||"").trim();
-      if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|FY)/.test(mv)) {
-        cells[0].style.color = "#005F5F"; cells[0].style.fontWeight = "700"; cells[0].style.textAlign = "center";
-        // Colour MoM delta cells
-        if (cells[2]) {
-          const d = parseFloat((cells[2].innerText||"").replace(/[$,()]/g,""));
-          if (!isNaN(d)) cells[2].style.background = d >= 0 ? POS : NEG;
-        }
-        if (cells[3]) {
-          const d = parseFloat((cells[3].innerText||"").replace(/[%,()]/g,""));
-          if (!isNaN(d)) cells[3].style.background = d >= 0 ? POS : NEG;
-        }
-        if (cells[5]) {
-          const d = parseFloat((cells[5].innerText||"").replace(/[$,()]/g,"").replace(/[+]/g,""));
-          if (!isNaN(d)) cells[5].style.background = d >= 0 ? POS : NEG;
-        }
-      }
-      if (mv === "FY 2025") { rowStyle(tr, TEAL_DARK, "#fff", "700"); return; }
+    // ── Assumptions: input rows alternate ─────────────────────────────────
+    if (sheetName==="Assumptions" && first!=="" && !SECTION_HDRS.has(first)) {
+      const alt = rIdx%2===0 ? ROW_ALT : "#fff";
+      if (cells[0]) { cells[0].style.background=alt; cells[0].style.fontWeight="normal"; }
+      if (cells[1]) { cells[1].style.background=TEAL_XPALE; cells[1].style.color="#0055A4"; cells[1].style.fontWeight="normal"; }
+      return;
     }
 
-    // Default alternating
-    if (rIdx % 2 === 0) cells.forEach(c => { if (!c.style.background) c.style.background = ROW_ALT; });
+    // ── Default alternating ────────────────────────────────────────────────
+    if (rIdx%2===0) cells.forEach(c=>{if(!c.style.background) c.style.background=ROW_ALT;});
   });
 }
-
 function renderSheet(sheetName) {
   const sheet = workbook.Sheets[sheetName];
   if (!sheet) return "<p>Sheet not found.</p>";
