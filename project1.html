@@ -178,11 +178,48 @@ body { font-family: 'Outfit', sans-serif; background: #f4f8fc; color: var(--text
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
-  .topbar { padding: 0 20px; }
   .meta-banner { padding: 20px 20px 16px; }
-  .tab-strip { padding: 0 20px; }
-  .viewer-wrap { padding: 16px 20px 32px; }
+  .tab-strip { padding: 0 12px; }
+  .viewer-wrap { padding: 12px 12px 32px; }
   .meta-right { display: none; }
+}
+
+/* Tablet: hide title text, keep back + download */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0 16px;
+    height: 56px;
+    gap: 8px;
+  }
+  .topbar-title  { display: none; }
+  .topbar-divider { display: none; }
+  .topbar-badge {
+    font-size: 9px; padding: 3px 8px;
+    letter-spacing: 0.04em;
+  }
+  .dl-btn {
+    font-size: 10px; padding: 7px 12px;
+    letter-spacing: 0.03em;
+  }
+}
+
+/* Phone: hide badge too, shrink download to icon-label */
+@media (max-width: 480px) {
+  .topbar { padding: 0 12px; gap: 6px; }
+  .topbar-badge  { display: none; }
+  .dl-btn-text   { display: none; }   /* hide "Download .xlsx", keep arrow */
+  .dl-btn {
+    padding: 7px 10px;
+    font-size: 11px;
+    min-width: 0;
+    gap: 0;
+  }
+  .tab-btn {
+    padding: 12px 14px;
+    font-size: 10px;
+    gap: 5px;
+  }
+  .tab-icon { font-size: 12px; }
 }
 </style>
 </head>
@@ -197,7 +234,7 @@ body { font-family: 'Outfit', sans-serif; background: #f4f8fc; color: var(--text
   </div>
   <span class="topbar-badge">LIVE MODEL</span>
   <div class="topbar-right">
-    <button class="dl-btn" onclick="downloadFile()">↓ Download .xlsx</button>
+    <button class="dl-btn" onclick="downloadFile()">↓ <span class="dl-btn-text">Download .xlsx</span></button>
   </div>
 </div>
 
@@ -285,86 +322,117 @@ function downloadFile() {
 
 function styleTable(table, sheetName) {
   const rows = table.querySelectorAll("tr");
+  const TEAL_DARK="#005F5F",TEAL_MID="#008B8B",TEAL_XPALE="#EBF9F8",ROW_ALT="#f9fbfd";
+  const PRI_HIGH="#FFCDD2",PRI_MED="#FFF3E0",PRI_LOW="#D6F5D6";
+  const STA_PAID="#D6F5D6",STA_PEND="#FFFDE7",STA_OVER="#FFCDD2";
+  const SECTION_HDRS=new Set(["INFLOWS","OUTFLOWS","MODEL ASSUMPTIONS","MONTHLY REVENUE",
+    "PAYROLL SCHEDULE","MONTHLY OPERATING EXPENSES","PAYMENT TERMS & POLICY",
+    "NYC TAX NEGOTIATION WIN","CASH POSITION","COLOR & FORMULA KEY",
+    "WEEKLY CASH SUMMARY","PAYMENT SUMMARY BY CATEGORY — APRIL 2026",
+    "COLOR LEGEND & FORMULA KEY"]);
+  const CATEGORIES=new Set(["Payroll","Physician Pay","Software","Insurance","Rent",
+    "Utilities","Office Supplies","Credit Card","Tax","Shipping","Compliance"]);
+  const KPI_LABELS=["OPENING BALANCE","MONTHLY REVENUE","MONTHLY OUTFLOWS","NET CASH FLOW","CLOSING BALANCE"];
+  const KEY_ROWS=["NET CASH FLOW","SURPLUS","DEFICIT","OPENING BALANCE","CLOSING BALANCE","CUMULATIVE","MINIMUM CASH"];
 
-  rows.forEach((tr, rIdx) => {
-    const cells = tr.querySelectorAll("td, th");
-    const firstCell = cells[0] ? (cells[0].innerText || "").trim() : "";
-    const allText = Array.from(cells).map(c => (c.innerText||"").trim()).join("|");
+  function rowStyle(tr,bg,col,wt){tr.querySelectorAll("td,th").forEach(c=>{c.style.background=bg;c.style.color=col||"#000";c.style.fontWeight=wt||"normal";});}
 
-    // Dashboard & Cash Flow: style title/section/total rows
-    if (firstCell === "" && cells.length <= 2) return;
+  rows.forEach((tr,rIdx)=>{
+    const cells=tr.querySelectorAll("td,th");
+    if(!cells.length) return;
+    const firstCell=(cells[0].innerText||"").trim();
+    const allText=Array.from(cells).map(c=>(c.innerText||"").trim()).join("|");
+    if(allText.replace(/\|/g,"").trim()==="") return;
 
-    // Title row (row 1 — merged, large title text)
-    if (rIdx === 0 || allText.includes("CASH FLOW TRACKER") || allText.includes("DASHBOARD") || allText.includes("ASSUMPTIONS") || allText.includes("WEEKLY PAYMENT")) {
-      if (rIdx === 0) {
-        tr.className = "row-title";
-        cells.forEach(c => c.style.cssText = "background:#005F5F;color:#fff;font-weight:700;font-size:13px;text-align:center;");
+    // Title row
+    if(rIdx===0){cells.forEach(c=>{c.style.cssText=`background:${TEAL_DARK};color:#fff;font-weight:700;font-size:13px;text-align:center;`});return;}
+    // Subtitle row
+    if(rIdx===1){cells.forEach(c=>{c.style.background=TEAL_XPALE;c.style.color="#555";c.style.fontStyle="italic";c.style.fontSize="10px";});return;}
+    // Section headers
+    if(SECTION_HDRS.has(firstCell)){rowStyle(tr,TEAL_MID,"#fff","700");return;}
+    // Total rows
+    if(firstCell==="TOTAL INFLOWS"||firstCell==="TOTAL OUTFLOWS"||firstCell==="TOTAL"){rowStyle(tr,TEAL_MID,"#fff","700");return;}
+    if(firstCell==="APRIL 2026 TOTAL"){rowStyle(tr,TEAL_DARK,"#fff","700");return;}
+    // Key balance rows
+    if(KEY_ROWS.some(k=>firstCell.includes(k))){rowStyle(tr,TEAL_DARK,"#fff","700");return;}
+
+    // ── DASHBOARD ────────────────────────────────────────────────────────────
+    if(sheetName==="Dashboard"){
+      // KPI label row
+      if(KPI_LABELS.some(k=>allText.includes(k))){
+        cells.forEach(c=>{c.style.background=TEAL_DARK;c.style.color="#fff";c.style.fontWeight="700";c.style.textAlign="center";c.style.fontSize="9px";c.style.letterSpacing="0.06em";});
         return;
       }
-    }
-    // Subtitle row
-    if (rIdx === 1) {
-      tr.style.background = "#EBF9F8";
-      tr.style.fontStyle = "italic";
-      tr.style.fontSize = "10px";
-      cells.forEach(c => { c.style.background = "#EBF9F8"; c.style.color = "#666"; });
+      // KPI value rows (large $ numbers, pure numeric content, early rows)
+      const onlyNums=allText.replace(/\|/g,"").replace(/[$,\d\s().+-]/g,"").trim()==="";
+      const hasBigNum=/\d{3,}/.test(allText);
+      if(hasBigNum&&onlyNums&&rIdx>=2&&rIdx<=12){
+        cells.forEach(c=>{c.style.background=TEAL_DARK;c.style.color="#fff";c.style.fontWeight="700";c.style.fontSize="15px";c.style.textAlign="center";});
+        return;
+      }
+      // KPI sub-label rows (small text under values, early rows, no $)
+      if(rIdx>=2&&rIdx<=12&&!hasBigNum&&!KPI_LABELS.some(k=>allText.includes(k))&&allText.replace(/\|/g,"").trim().length>0){
+        const parts=allText.split("|").filter(s=>s.trim());
+        if(parts.length<=6){
+          cells.forEach(c=>{c.style.background=TEAL_DARK;c.style.color="rgba(255,255,255,0.75)";c.style.fontSize="9px";c.style.textAlign="center";c.style.fontStyle="italic";});
+          return;
+        }
+      }
+      // Column header for Weekly Summary or Category table
+      if(firstCell==="Week"||firstCell==="Category"){
+        rowStyle(tr,TEAL_MID,"#fff","600");
+        cells.forEach(c=>{c.style.textAlign="center";c.style.fontSize="10px";});
+        return;
+      }
+      // Week rows W1-W4
+      if(/^W[1-4]$/.test(firstCell)){
+        const alt=rIdx%2===0?ROW_ALT:"#fff";
+        cells.forEach(c=>{
+          const txt=(c.innerText||"").trim();
+          if(txt==="Completed"){c.style.background=STA_PAID;c.style.color="#005C2E";c.style.fontWeight="700";}
+          else if(txt==="In Progress"){c.style.background=STA_PEND;c.style.color="#7B4800";c.style.fontWeight="700";}
+          else if(txt==="Upcoming"){c.style.background="#EBF9F8";c.style.color="#2d8c74";}
+          else{if(!c.style.background)c.style.background=alt;}
+        });
+        cells[0].style.color="#005F5F";cells[0].style.fontWeight="700";
+        return;
+      }
+      // Category summary rows
+      if(CATEGORIES.has(firstCell)){
+        const alt=rIdx%2===0?ROW_ALT:"#fff";
+        cells.forEach(c=>{
+          const txt=(c.innerText||"").trim();
+          if(txt==="HIGH"){c.style.background=PRI_HIGH;c.style.color="#9B0000";c.style.fontWeight="700";}
+          else if(txt==="NORMAL"){c.style.background=PRI_LOW;c.style.color="#005C2E";}
+          else c.style.background=alt;
+        });
+        cells[0].style.fontWeight="700";
+        return;
+      }
+      // Default alternating
+      cells.forEach(c=>{if(!c.style.background)c.style.background=rIdx%2===0?ROW_ALT:"#fff";});
       return;
     }
 
-    // Section headers (all-caps single merged cells)
-    if ((firstCell === "INFLOWS" || firstCell === "OUTFLOWS" || firstCell === "MODEL ASSUMPTIONS"
-        || firstCell === "MONTHLY REVENUE" || firstCell === "PAYROLL SCHEDULE"
-        || firstCell === "MONTHLY OPERATING EXPENSES" || firstCell === "PAYMENT TERMS & POLICY"
-        || firstCell === "NYC TAX NEGOTIATION WIN" || firstCell === "CASH POSITION"
-        || firstCell === "COLOR & FORMULA KEY" || firstCell === "WEEKLY CASH SUMMARY"
-        || firstCell === "PAYMENT SUMMARY BY CATEGORY — APRIL 2026"
-        || firstCell === "COLOR LEGEND & FORMULA KEY"
-      )) {
-      cells.forEach(c => { c.style.background = "#008B8B"; c.style.color = "#fff"; c.style.fontWeight = "700"; });
+    // ── CASH FLOW TRACKER: col header row ─────────────────────────────────
+    if(sheetName==="Cash_Flow_Tracker"&&rIdx===3){
+      cells.forEach(c=>{c.style.background=TEAL_DARK;c.style.color="#fff";c.style.fontWeight="700";c.style.fontSize="11px";c.style.textAlign="center";});
       return;
     }
-    // Total rows
-    if (firstCell === "TOTAL INFLOWS" || firstCell === "TOTAL OUTFLOWS" || firstCell === "APRIL 2026 TOTAL" || firstCell === "TOTAL") {
-      cells.forEach(c => { c.style.background = "#008B8B"; c.style.color = "#fff"; c.style.fontWeight = "700"; });
-      return;
-    }
-    // Key rows (Net cash flow, surplus)
-    if (firstCell.includes("NET CASH FLOW") || firstCell.includes("SURPLUS") || firstCell.includes("DEFICIT") || firstCell.includes("OPENING BALANCE") || firstCell.includes("CLOSING BALANCE") || firstCell.includes("CUMULATIVE") || firstCell.includes("MINIMUM CASH") || firstCell.includes("APRIL 2026")) {
-      cells.forEach(c => { c.style.background = "#005F5F"; c.style.color = "#fff"; c.style.fontWeight = "700"; });
-      return;
-    }
-    // Header row (row 4 — col headers)
-    if (rIdx === 3) {
-      cells.forEach(c => {
-        c.style.background = "#005F5F";
-        c.style.color = "#fff";
-        c.style.fontWeight = "700";
-        c.style.fontSize = "11px";
-        c.style.textAlign = "center";
-      });
-      return;
-    }
-    // Payment planner: priority colour
-    if (sheetName === "Weekly_Payment_Planner") {
-      cells.forEach((c, ci) => {
-        const txt = (c.innerText || "").trim();
-        if (ci === 6) { // Priority col
-          if (txt === "High")   { c.style.background = "#FFCDD2"; c.style.fontWeight = "700"; }
-          if (txt === "Medium") { c.style.background = "#FFF3E0"; }
-          if (txt === "Low")    { c.style.background = "#D6F5D6"; }
-        }
-        if (ci === 10) { // Status col
-          if (txt === "Paid")    { c.style.background = "#D6F5D6"; c.style.fontWeight = "700"; c.style.color = "#005C2E"; }
-          if (txt === "Pending") { c.style.background = "#FFFDE7"; c.style.color = "#7B4800"; }
-          if (txt === "Overdue") { c.style.background = "#FFCDD2"; c.style.color = "#9B0000"; c.style.fontWeight = "700"; }
-        }
+
+    // ── PAYMENT PLANNER: col headers + priority/status ──────────────────────
+    if(sheetName==="Weekly_Payment_Planner"){
+      if(rIdx===3){cells.forEach(c=>{c.style.background=TEAL_DARK;c.style.color="#fff";c.style.fontWeight="700";c.style.fontSize="10px";c.style.textAlign="center";});return;}
+      cells.forEach((c,ci)=>{
+        const txt=(c.innerText||"").trim();
+        if(ci===6){if(txt==="High"){c.style.background=PRI_HIGH;c.style.fontWeight="700";}else if(txt==="Medium")c.style.background=PRI_MED;else if(txt==="Low")c.style.background=PRI_LOW;}
+        if(ci===10){if(txt==="Paid"){c.style.background=STA_PAID;c.style.fontWeight="700";c.style.color="#005C2E";}else if(txt==="Pending"){c.style.background=STA_PEND;c.style.color="#7B4800";}else if(txt==="Overdue"){c.style.background=STA_OVER;c.style.color="#9B0000";c.style.fontWeight="700";}}
+        if(ci===0&&/^W[1-4]$/.test(txt)){c.style.color="#005F5F";c.style.fontWeight="700";}
       });
     }
 
-    // Alternating rows for readability
-    if (rIdx % 2 === 0) {
-      cells.forEach(c => { if (!c.style.background) c.style.background = "#f9fbfd"; });
-    }
+    // Default alternating
+    if(rIdx%2===0){cells.forEach(c=>{if(!c.style.background)c.style.background=ROW_ALT;});}
   });
 }
 
